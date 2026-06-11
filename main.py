@@ -2,19 +2,25 @@ from __future__ import annotations
 
 import os
 import sys
+from enum import Enum
 from typing import Annotated
-
 
 import typer
 from gql.transport.exceptions import TransportQueryError, TransportServerError
 
-from calc_score import UserContributionCounts
+from calc_score import calculate_total_scores, UserContributionCounts
 from gh_service import fetch_contributions
 from output_writer import build_output, write_output
 
 DEFAULT_REPOSITORY = "oss2026hnu/reposcore-py"
 
 app = typer.Typer(help="reposcore-py CLI")
+
+
+class OutputFormatOption(str, Enum):
+    csv = "csv"
+    txt = "txt"
+    html = "html"
 
 
 def split_repository(repository: str) -> tuple[str, str]:
@@ -33,13 +39,13 @@ def main(
         typer.Argument(help="조회할 GitHub 저장소 경로입니다. 예: owner/repo1 owner/repo2"),
     ],
     format: Annotated[
-        str,
+        OutputFormatOption,
         typer.Option("--format", "-f", help="출력 파일 형식을 지정합니다. (csv | txt | html)"),
-    ] = "txt",
-    
+    ] = OutputFormatOption.txt,
     output: Annotated[
         str | None,
-        typer.Option("--output", "-o",
+        typer.Option(
+            "--output", "-o",
             help=(
                 "결과를 저장할 출력 디렉터리 경로입니다. "
                 "생략하면 파일로 저장하지 않고 stdout에 출력합니다. 예: ./result"
@@ -50,6 +56,10 @@ def main(
         str | None,
         typer.Option("--token", "-t", help="GitHub Personal Access Token. 미제공 시 GITHUB_TOKEN 환경 변수를 사용합니다."),
     ] = None,
+    aggregate: Annotated[
+        bool,
+        typer.Option("--aggregate", help="여러 저장소의 결과를 하나로 합산하여 전체 기여 점수를 출력합니다."),
+    ] = False,
 ) -> None:
     """Fetch basic repository counts from GitHub GraphQL API."""
 
@@ -93,6 +103,46 @@ def main(
         except Exception as error:
             print(f"오류 ({repo}): {error}", file=sys.stderr)
             raise typer.Exit(1) from error
+
+    format_value = format.value
+
+    if aggregate:
+        try:
+            total_scores = calculate_total_scores(all_contributions)
+            
+            # [변경점] output_writer가 100% 호환되도록 중첩 딕셔너리 구조로 직접 매핑 변환
+            aggregated_results = []
+            for score in total_scores:
+                aggregated_results.append({
+                    "nameWithOwner": score.user,
+                    "issues": {"totalCount": score.feature_bug_issue_count + score.doc_issue_count},
+                    "pullRequests": {"totalCount": score.feature_bug_pr_count + score.doc_pr_count + score.typo_pr_count},
+                    "totalScore": score.score
+                })
+            
+            content = build_output(aggregated_results, format_value)
+            write_output(content, output, format_value)
+        except Exception as error:
+            print(f"집계 출력 오류: {error}", file=sys.stderr)
+            raise typer.Exit(1) from error
+    else:
+        try:
+            # [변경점] 개별 출력 모드에서도 output_writer 규격에 맞추어 변환 처리
+            flatten_results = []
+            for repo_contribs in all_contributions:
+                for contrib in repo_contribs:
+                    flatten_results.append({
+                        "nameWithOwner": contrib.user,
+                        "issues": {"totalCount": contrib.feature_bug_issue_count + contrib.doc_issue_count},
+                        "pullRequests": {"totalCount": contrib.feature_bug_pr_count + contrib.doc_pr_count + contrib.typo_pr_count}
+                    })
+                    
+            content = build_output(flatten_results, format_value)
+            write_output(content, output, format_value)
+        except Exception as error:
+            print(f"출력 오류: {error}", file=sys.stderr)
+            raise typer.Exit(1) from error
+
 
 def cli() -> None:
     app()

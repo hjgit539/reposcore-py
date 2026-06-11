@@ -5,7 +5,8 @@
         "ms-python.python",
         "ms-python.vscode-pylance",
         "tamasfe.even-better-toml",
-        "mechatroner.rainbow-csv"
+        "mechatroner.rainbow-csv",
+        "ms-vscode.live-server"
       ]
     }
   }

@@ -1,3 +1,23 @@
+from __future__ import annotations
+
+import os
+
+from gql import Client, gql
+from gql.transport.requests import RequestsHTTPTransport
+
+from calc_score import UserContributionCounts
+
+
+def create_client(token: str) -> Client:
+    transport = RequestsHTTPTransport(
+        url="https://api.github.com/graphql",
+        headers={"Authorization": f"Bearer {token}"},
+        verify=True,
+        retries=3,
+    )
+    return Client(transport=transport, fetch_schema_from_transport=False)
+
+
 def fetch_contributions(repository: str, token: str) -> list[UserContributionCounts]:
     owner, name = repository.split("/", maxsplit=1)
     client = create_client(token)

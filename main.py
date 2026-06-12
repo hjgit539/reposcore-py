@@ -86,6 +86,8 @@ def main(
             cache_path = None
             if output:
                 cache_path = Path(output) / f"{owner}_{repo_name}" / "cache.json"
+            else:
+                cache_path = Path(".cache") / f"{owner}_{repo_name}" / "cache.json"
 
             cached_data = {}
             if cache_path:

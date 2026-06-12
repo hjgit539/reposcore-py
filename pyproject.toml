@@ -29,4 +29,5 @@ only-include = [
   "output_writer.py",
   "calc_score.py",
   "gh_service.py",
+  "cache_manager.py",
 ]

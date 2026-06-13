@@ -13,7 +13,12 @@ import typer
 from gql.transport.exceptions import TransportQueryError, TransportServerError
 
 from cache_manager import load_cache, save_cache
-from calc_score import UserContributionCounts, calculate_total_scores
+from calc_score import (
+    UserContributionCounts,
+    UserScore,
+    calculate_repository_scores,
+    calculate_total_scores,
+)
 from gh_service import fetch_contributions, fetch_multiple_contributions
 from output_writer import build_output, write_output
 
@@ -55,6 +60,24 @@ def _dump_contributions(
         else vars(contribution)
         for contribution in contributions
     ]
+
+
+def _score_to_result(score: UserScore) -> dict:
+    """UserScore를 output_writer가 기대하는 dict 형태로 변환합니다."""
+    contribution = score.contribution
+    return {
+        "nameWithOwner": contribution.user,
+        "issues": {
+            "totalCount": contribution.feature_bug_issue_count
+            + contribution.doc_issue_count,
+        },
+        "pullRequests": {
+            "totalCount": contribution.feature_bug_pr_count
+            + contribution.doc_pr_count
+            + contribution.typo_pr_count,
+        },
+        "totalScore": score.score,
+    }
 
 
 def _load_or_fetch_contributions(
@@ -290,59 +313,23 @@ def main(
     # --- 수집 완료 데이터 출력 및 집계(--aggregate) 제어 로직 ---
     format_value = format.value
 
-    if aggregate:
-        try:
-            total_scores = calculate_total_scores(all_contributions)
+    try:
+        if aggregate:
+            scores = calculate_total_scores(all_contributions)
+        else:
+            # 저장소별로 점수를 매긴 뒤 하나의 목록으로 펼칩니다.
+            scores = [
+                score
+                for repo_contributions in all_contributions
+                for score in calculate_repository_scores(repo_contributions)
+            ]
 
-            # output_writer가 100% 호환되도록 중첩 딕셔너리 구조로 직접 매핑 변환
-            aggregated_results = []
-            for score in total_scores:
-                c = score.contribution
-                aggregated_results.append(
-                    {
-                        "nameWithOwner": c.user,
-                        "issues": {
-                            "totalCount": c.feature_bug_issue_count + c.doc_issue_count
-                        },
-                        "pullRequests": {
-                            "totalCount": c.feature_bug_pr_count
-                            + c.doc_pr_count
-                            + c.typo_pr_count
-                        },
-                        "totalScore": score.score,
-                    }
-                )
-            content = build_output(aggregated_results, format_value)
-            write_output(content, output, format_value)
-        except Exception as error:
-            print(f"집계 출력 오류: {error}", file=sys.stderr)
-            raise typer.Exit(1) from error
-    else:
-        try:
-            # 개별 출력 모드에서도 output_writer 규격에 맞추어 변환 처리
-            flatten_results = []
-            for repo_contribs in all_contributions:
-                for contrib in repo_contribs:
-                    flatten_results.append(
-                        {
-                            "nameWithOwner": contrib.user,
-                            "issues": {
-                                "totalCount": contrib.feature_bug_issue_count
-                                + contrib.doc_issue_count,
-                            },
-                            "pullRequests": {
-                                "totalCount": contrib.feature_bug_pr_count
-                                + contrib.doc_pr_count
-                                + contrib.typo_pr_count,
-                            },
-                        }
-                    )
-
-            content = build_output(flatten_results, format_value)
-            write_output(content, output, format_value)
-        except Exception as error:
-            print(f"출력 오류: {error}", file=sys.stderr)
-            raise typer.Exit(1) from error
+        results = [_score_to_result(score) for score in scores]
+        content = build_output(results, format_value)
+        write_output(content, output, format_value)
+    except Exception as error:
+        print(f"출력 오류: {error}", file=sys.stderr)
+        raise typer.Exit(1) from error
 
 
 def cli() -> None:

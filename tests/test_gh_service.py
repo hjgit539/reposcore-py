@@ -45,9 +45,7 @@ def make_node(login: str | None, labels: list[str]) -> dict:
     author = {"login": login} if login else None
     return {
         "author": author,
-        "labels": {
-            "nodes": [{"name": label} for label in labels]
-        },
+        "labels": {"nodes": [{"name": label} for label in labels]},
     }
 
 
@@ -71,13 +69,15 @@ def test_issue_label_classification(monkeypatch: pytest.MonkeyPatch):
     def mock_execute(query, variable_values):
         query_str = str(query)
         if "issues(" in query_str:
-            return make_issue_response([
-                make_node("user1", ["documentation"]),
-                make_node("user1", ["bug"]),
-                make_node("user1", ["enhancement"]),
-                make_node("user1", ["unknown"]),
-                make_node("user1", []),
-            ])
+            return make_issue_response(
+                [
+                    make_node("user1", ["documentation"]),
+                    make_node("user1", ["bug"]),
+                    make_node("user1", ["enhancement"]),
+                    make_node("user1", ["unknown"]),
+                    make_node("user1", []),
+                ],
+            )
         if "pullRequests(" in query_str:
             return make_pr_response([])
         return {}
@@ -100,14 +100,16 @@ def test_pr_label_classification(monkeypatch: pytest.MonkeyPatch):
         if "issues(" in query_str:
             return make_issue_response([])
         if "pullRequests(" in query_str:
-            return make_pr_response([
-                make_node("user1", ["documentation"]),
-                make_node("user1", ["typo"]),
-                make_node("user1", ["bug"]),
-                make_node("user1", ["enhancement"]),
-                make_node("user1", ["unknown"]),
-                make_node("user1", []),
-            ])
+            return make_pr_response(
+                [
+                    make_node("user1", ["documentation"]),
+                    make_node("user1", ["typo"]),
+                    make_node("user1", ["bug"]),
+                    make_node("user1", ["enhancement"]),
+                    make_node("user1", ["unknown"]),
+                    make_node("user1", []),
+                ],
+            )
         return {}
 
     monkeypatch.setattr(
@@ -127,13 +129,9 @@ def test_missing_author_is_ignored(monkeypatch: pytest.MonkeyPatch):
     def mock_execute(query, variable_values):
         query_str = str(query)
         if "issues(" in query_str:
-            return make_issue_response([
-                make_node(None, ["bug"]),
-            ])
+            return make_issue_response([make_node(None, ["bug"])])
         if "pullRequests(" in query_str:
-            return make_pr_response([
-                make_node(None, ["typo"]),
-            ])
+            return make_pr_response([make_node(None, ["typo"])])
         return {}
 
     monkeypatch.setattr(
@@ -149,16 +147,20 @@ def test_same_user_counts_accumulate(monkeypatch: pytest.MonkeyPatch):
     def mock_execute(query, variable_values):
         query_str = str(query)
         if "issues(" in query_str:
-            return make_issue_response([
-                make_node("user1", ["bug"]),
-                make_node("user1", ["documentation"]),
-            ])
+            return make_issue_response(
+                [
+                    make_node("user1", ["bug"]),
+                    make_node("user1", ["documentation"]),
+                ],
+            )
         if "pullRequests(" in query_str:
-            return make_pr_response([
-                make_node("user1", ["typo"]),
-                make_node("user1", ["enhancement"]),
-                make_node("user1", ["documentation"]),
-            ])
+            return make_pr_response(
+                [
+                    make_node("user1", ["typo"]),
+                    make_node("user1", ["enhancement"]),
+                    make_node("user1", ["documentation"]),
+                ],
+            )
         return {}
 
     monkeypatch.setattr(
@@ -182,15 +184,19 @@ def test_multiple_users_are_separated(monkeypatch: pytest.MonkeyPatch):
     def mock_execute(query, variable_values):
         query_str = str(query)
         if "issues(" in query_str:
-            return make_issue_response([
-                make_node("user1", ["bug"]),
-                make_node("user2", ["documentation"]),
-            ])
+            return make_issue_response(
+                [
+                    make_node("user1", ["bug"]),
+                    make_node("user2", ["documentation"]),
+                ],
+            )
         if "pullRequests(" in query_str:
-            return make_pr_response([
-                make_node("user2", ["typo"]),
-                make_node("user3", ["enhancement"]),
-            ])
+            return make_pr_response(
+                [
+                    make_node("user2", ["typo"]),
+                    make_node("user3", ["enhancement"]),
+                ],
+            )
         return {}
 
     monkeypatch.setattr(

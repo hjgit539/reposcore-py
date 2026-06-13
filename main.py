@@ -1,9 +1,8 @@
 from __future__ import annotations
-from datetime import datetime, timezone, date
 
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from enum import Enum
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -115,7 +114,9 @@ def _load_or_fetch_contributions(
 
     if missing_repos:
         if len(missing_repos) == 1:
-            fetched_contributions = [fetch_contributions(missing_repos[0], token, since, until)]
+            fetched_contributions = [
+                fetch_contributions(missing_repos[0], token, since, until)
+            ]
         else:
             fetched_contributions = fetch_multiple_contributions(
                 missing_repos,
@@ -218,11 +219,23 @@ def main(
     ] = False,
     since: Annotated[
         str | None,
-        typer.Option("--since", help="이 날짜 이후의 기여만 점수 계산에 포함합니다. 예: 2026-06-01 (YYYY-MM-DD)"),
+        typer.Option(
+            "--since",
+            help=(
+                "이 날짜 이후의 기여만 점수 계산에 포함합니다. "
+                "예: 2026-06-01 (YYYY-MM-DD)"
+            ),
+        ),
     ] = None,
     until: Annotated[
         str | None,
-        typer.Option("--until", help="이 날짜까지의 기여만 점수 계산에 포함합니다. 예: 2026-06-10 (YYYY-MM-DD)"),
+        typer.Option(
+            "--until",
+            help=(
+                "이 날짜까지의 기여만 점수 계산에 포함합니다. "
+                "예: 2026-06-10 (YYYY-MM-DD)"
+            ),
+        ),
     ] = None,
 ) -> None:
     """Fetch basic repository counts from GitHub GraphQL API."""
@@ -245,20 +258,32 @@ def main(
         try:
             parsed_since = date.fromisoformat(since)
         except ValueError:
-            print(f"오류: --since 날짜 형식이 잘못되었습니다. YYYY-MM-DD 형식으로 입력하세요. (입력값: {since})", file=sys.stderr)
+            print(
+                f"오류: --since 날짜 형식이 잘못되었습니다. "
+                f"YYYY-MM-DD 형식으로 입력하세요. (입력값: {since})",
+                file=sys.stderr,
+            )
             raise typer.Exit(1)
 
     if until is not None:
         try:
             parsed_until = date.fromisoformat(until)
         except ValueError:
-            print(f"오류: --until 날짜 형식이 잘못되었습니다. YYYY-MM-DD 형식으로 입력하세요. (입력값: {until})", file=sys.stderr)
+            print(
+                f"오류: --until 날짜 형식이 잘못되었습니다. "
+                f"YYYY-MM-DD 형식으로 입력하세요. (입력값: {until})",
+                file=sys.stderr,
+            )
             raise typer.Exit(1)
 
-    if parsed_since is not None and parsed_until is not None and parsed_since > parsed_until:
+    if (
+        parsed_since is not None
+        and parsed_until is not None
+        and parsed_since > parsed_until
+    ):
         print("오류: --since 날짜가 --until 날짜보다 늦습니다.", file=sys.stderr)
         raise typer.Exit(1)
-    
+
     try:
         all_contributions = _load_or_fetch_contributions(
             repos,

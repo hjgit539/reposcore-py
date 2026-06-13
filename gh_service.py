@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from datetime import date
+
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport
 from pydantic import BaseModel
 
 from calc_score import UserContributionCounts
 
+
 # ── Pydantic 모델 정의 ──────────────────────────────────────────
-
-
 class Author(BaseModel):
     login: str
 
@@ -56,8 +56,6 @@ class PRResponse(BaseModel):
 
 
 # ── 클라이언트 생성 ──────────────────────────────────────────────
-
-
 def create_client(token: str) -> Client:
     transport = RequestsHTTPTransport(
         url="https://api.github.com/graphql",
@@ -69,7 +67,6 @@ def create_client(token: str) -> Client:
 
 
 # ── 날짜 필터링 유틸리티 ─────────────────────────────────────────
-
 def _is_in_date_range(
     date_str: str | None,
     since: date | None,
@@ -92,8 +89,6 @@ def _is_in_date_range(
 
 
 # ── 공통 기여 집계 유틸리티 ─────────────────────────────────────
-
-
 def _split_repository(repository: str) -> tuple[str, str]:
     parts = repository.split("/")
 
@@ -121,7 +116,7 @@ def _add_issue_contribution(
 ) -> None:
     if node.author is None:
         return
-    
+
     if not _is_in_date_range(node.createdAt, since, until):
         return
 
@@ -240,7 +235,6 @@ def _build_pr_alias_query(indexes: list[int]):
 
 
 # ── 기여 데이터 수집 ──────────────────────────────────────────────
-
 def fetch_contributions(
     repository: str,
     token: str,

@@ -23,9 +23,7 @@ def extract_title(path: Path) -> str:
 def collect_docs() -> list[Path]:
     """Collect markdown documents that should appear in docs/README.md."""
     return sorted(
-        path
-        for path in DOCS_DIR.glob("*.md")
-        if path.name not in EXCLUDED_FILES
+        path for path in DOCS_DIR.glob("*.md") if path.name not in EXCLUDED_FILES
     )
 
 

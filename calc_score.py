@@ -36,6 +36,7 @@ def calculate_final_score(
     feature_bug_issue_count: int,
     doc_issue_count: int,
 ) -> int:
+    """기여 유형별 PR 및 이슈 개수를 바탕으로 최대 인정 개수 제한 등 규칙을 적용하여 최종 점수를 계산합니다."""
     max_additional_pr_count = 3 * max(feature_bug_pr_count, 1)
     valid_pr_count = feature_bug_pr_count + min(
         doc_pr_count + typo_pr_count,
@@ -71,6 +72,7 @@ def calculate_final_score(
 
 
 def calculate_user_score(contribution: UserContributionCounts) -> UserScore:
+    """단일 사용자의 기여 데이터를 바탕으로 점수를 계산하고 그 결과를 포함하는 모델을 반환합니다."""
     score = calculate_final_score(
         contribution.feature_bug_pr_count,
         contribution.doc_pr_count,
@@ -88,6 +90,7 @@ def calculate_user_score(contribution: UserContributionCounts) -> UserScore:
 def calculate_repository_scores(
     contributions: Iterable[UserContributionCounts],
 ) -> list[UserScore]:
+    """저장소 내 모든 사용자의 기여 점수를 계산하고 점수 내림차순 및 사용자 이름 오름차순으로 정렬하여 반환합니다."""
     scores = [calculate_user_score(contribution) for contribution in contributions]
 
     return sorted(
@@ -98,6 +101,7 @@ def calculate_repository_scores(
 def merge_repository_contributions(
     repositories: Iterable[Iterable[UserContributionCounts]],
 ) -> list[UserContributionCounts]:
+    """여러 저장소에서 수집된 사용자별 기여 개수를 하나로 합산하여 반환합니다."""
     merged: dict[str, UserContributionCounts] = {}
 
     for repository in repositories:
@@ -120,6 +124,7 @@ def merge_repository_contributions(
 def calculate_total_scores(
     repositories: Iterable[Iterable[UserContributionCounts]],
 ) -> list[UserScore]:
+    """여러 저장소의 기여 데이터를 합산한 뒤 각 사용자의 최종 전체 점수를 계산하여 정렬된 목록으로 반환합니다."""
     merged_contributions = merge_repository_contributions(repositories)
 
     return calculate_repository_scores(merged_contributions)

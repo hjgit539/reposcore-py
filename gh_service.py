@@ -60,6 +60,7 @@ class PRResponse(BaseModel):
 
 # ── 클라이언트 생성 ──────────────────────────────────────────────
 def create_client(token: str) -> Client:
+    """주어진 GitHub 토큰을 사용하여 GraphQL API 요청을 위한 클라이언트 인스턴스를 생성합니다."""
     transport = RequestsHTTPTransport(
         url="https://api.github.com/graphql",
         headers={"Authorization": f"Bearer {token}"},
@@ -75,6 +76,7 @@ def _is_in_date_range(
     since: date | None,
     until: date | None,
 ) -> bool:
+    """주어진 날짜 문자열이 since와 until 범위 안에 포함되는지 확인합니다."""
     if date_str is None:
         return True
 
@@ -93,6 +95,7 @@ def _is_in_date_range(
 
 # ── 공통 기여 집계 유틸리티 ─────────────────────────────────────
 def _split_repository(repository: str) -> tuple[str, str]:
+    """'owner/repo' 형식의 저장소 문자열을 소유자와 저장소 이름으로 분리하여 반환합니다."""
     parts = repository.split("/")
 
     if len(parts) != 2 or not parts[0] or not parts[1]:
@@ -105,6 +108,7 @@ def _get_contribution(
     contributions: dict[str, UserContributionCounts],
     user: str,
 ) -> UserContributionCounts:
+    """사용자의 기여 데이터 객체를 반환하거나, 없다면 새로 생성하여 사전에 추가한 뒤 반환합니다."""
     if user not in contributions:
         contributions[user] = UserContributionCounts(user=user)
 
@@ -117,6 +121,7 @@ def _add_issue_contribution(
     since: date | None = None,
     until: date | None = None,
 ) -> None:
+    """이슈 노드 정보를 바탕으로 라벨 및 닫힘 사유, 날짜 범위를 확인하여 사용자의 이슈 기여 개수를 추가합니다."""
     if node.author is None:
         return
 
@@ -143,6 +148,7 @@ def _add_pr_contribution(
     since: date | None = None,
     until: date | None = None,
 ) -> None:
+    """PR 노드 정보를 바탕으로 라벨 및 병합 날짜 범위를 확인하여 사용자의 PR 기여 개수를 추가합니다."""
     if node.author is None:
         return
 
@@ -163,6 +169,7 @@ def _add_pr_contribution(
 
 
 def _build_issue_alias_query(indexes: list[int]):
+    """여러 저장소의 이슈를 한 번에 조회하기 위해 GraphQL repository alias를 적용한 쿼리를 생성합니다."""
     variable_definitions: list[str] = ["$pageSize: Int!"]
     repository_blocks: list[str] = []
 
@@ -209,6 +216,7 @@ def _build_issue_alias_query(indexes: list[int]):
 
 
 def _build_pr_alias_query(indexes: list[int]):
+    """여러 저장소의 병합된 PR을 한 번에 조회하기 위해 GraphQL repository alias를 적용한 쿼리를 생성합니다."""
     variable_definitions: list[str] = ["$pageSize: Int!"]
     repository_blocks: list[str] = []
 
@@ -261,6 +269,7 @@ def fetch_contributions(
     until: date | None = None,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> list[UserContributionCounts]:
+    """단일 저장소에서 GraphQL API를 사용해 기여자별 활동 데이터를 수집하고 분류하여 반환합니다."""
     owner, name = _split_repository(repository)
     client = create_client(token)
     contributions: dict[str, UserContributionCounts] = {}

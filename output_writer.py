@@ -12,6 +12,7 @@ OutputFormat = Literal["csv", "txt", "html"]
 
 
 def normalize_output_format(output_format: str) -> OutputFormat:
+    """입력된 출력 형식 문자열을 소문자로 변환하고, 유효한 형식(csv, txt, html)인지 검사하여 반환합니다."""
     normalized = output_format.lower()
 
     if normalized not in ("csv", "txt", "html"):
@@ -21,18 +22,22 @@ def normalize_output_format(output_format: str) -> OutputFormat:
 
 
 def get_repository_name(result: dict[str, Any]) -> str:
+    """결과 딕셔너리에서 저장소 이름(owner/repo)을 추출하여 반환합니다."""
     return str(result["nameWithOwner"])
 
 
 def get_issue_count(result: dict[str, Any]) -> int:
+    """결과 딕셔너리에서 전체 이슈 개수를 추출하여 반환합니다."""
     return int(result["issues"]["totalCount"])
 
 
 def get_pull_request_count(result: dict[str, Any]) -> int:
+    """결과 딕셔너리에서 전체 PR 개수를 추출하여 반환합니다."""
     return int(result["pullRequests"]["totalCount"])
 
 
 def build_txt_output(results: list[dict[str, Any]]) -> str:
+    """조회된 결과 데이터를 표 형태의 텍스트(txt) 형식으로 변환하여 반환합니다."""
     has_score = any("totalScore" in result for result in results)
 
     headers = ["repo", "issues", "pull_requests"] + (
@@ -53,6 +58,7 @@ def build_txt_output(results: list[dict[str, Any]]) -> str:
 
 
 def build_csv_output(results: list[dict[str, Any]]) -> str:
+    """조회된 결과 데이터를 콤마로 구분된 CSV 형식 문자열로 변환하여 반환합니다."""
     has_score = any("totalScore" in result for result in results)
 
     output = StringIO()
@@ -77,6 +83,7 @@ def build_csv_output(results: list[dict[str, Any]]) -> str:
 
 
 def build_html_output(results: list[dict[str, Any]]) -> str:
+    """조회된 결과 데이터를 바탕으로 Chart.js를 사용한 HTML 막대 그래프 문서를 생성하여 반환합니다."""
     has_score = any("totalScore" in result for result in results)
 
     labels = []
@@ -168,6 +175,7 @@ def build_html_output(results: list[dict[str, Any]]) -> str:
 
 
 def build_output(results: list[dict[str, Any]], output_format: str) -> str:
+    """지정된 형식(txt, csv, html)에 맞춰 결과 데이터를 문자열로 변환하여 반환합니다."""
     normalized_format = normalize_output_format(output_format)
 
     if normalized_format == "csv":
@@ -184,6 +192,7 @@ def write_output(
     output_dir: str,
     output_format: str,
 ) -> Path:
+    """변환된 문자열 내용을 지정된 디렉터리에 해당 형식의 확장자를 가진 파일로 저장하고 파일 경로를 반환합니다."""
     normalized_format = normalize_output_format(output_format)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)

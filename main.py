@@ -21,6 +21,9 @@ from calc_score import (
 from gh_service import fetch_contributions, fetch_multiple_contributions
 from output_writer import build_output, write_output
 
+CACHE_SCHEMA_VERSION = 1
+CACHE_TTL_SECONDS = 60 * 60
+
 app = typer.Typer(help="reposcore-py CLI")
 
 
@@ -49,6 +52,48 @@ def split_repository(repository: str) -> tuple[str, str]:
 
     return parts[0], parts[1]
 
+def _format_cache_date(value: date | None) -> str | None:
+    return value.isoformat() if value is not None else None
+
+
+def _is_cache_valid(
+    cached_data: dict,
+    since: date | None,
+    until: date | None,
+) -> bool:
+    if "contributions" not in cached_data:
+        return False
+
+    metadata = cached_data.get("metadata")
+    if not isinstance(metadata, dict):
+        return False
+
+    if metadata.get("schemaVersion") != CACHE_SCHEMA_VERSION:
+        return False
+
+    if metadata.get("since") != _format_cache_date(since):
+        return False
+
+    if metadata.get("until") != _format_cache_date(until):
+        return False
+
+    generated_at = metadata.get("generatedAt")
+    if not isinstance(generated_at, str):
+        return False
+
+    try:
+        generated_datetime = datetime.fromisoformat(
+            generated_at.replace("Z", "+00:00")
+        )
+    except ValueError:
+        return False
+
+    now = datetime.now(timezone.utc)
+
+    if (now - generated_datetime).total_seconds() > CACHE_TTL_SECONDS:
+        return False
+
+    return True
 
 def _dump_contributions(
     contributions: list[UserContributionCounts],
@@ -103,7 +148,7 @@ def _load_or_fetch_contributions(
         cache_paths.append(cache_path)
         cached_data = load_cache(cache_path) if cache_path else {}
 
-        if "contributions" in cached_data:
+        if _is_cache_valid(cached_data, since, until):
             all_contributions[index] = [
                 UserContributionCounts(**contribution)
                 for contribution in cached_data["contributions"]
@@ -143,10 +188,12 @@ def _load_or_fetch_contributions(
                             "repository": repo,
                             "owner": owner,
                             "name": repo_name,
-                            "schemaVersion": 1,
+                            "schemaVersion": CACHE_SCHEMA_VERSION,
                             "generatedAt": datetime.now(timezone.utc)
                             .isoformat(timespec="seconds")
                             .replace("+00:00", "Z"),
+                            "since": _format_cache_date(since),
+                            "until": _format_cache_date(until),
                         },
                         "contributions": _dump_contributions(contributions),
                     },
